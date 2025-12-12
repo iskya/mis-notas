@@ -4,7 +4,7 @@ Este proyecto es una aplicación web sencilla y eficiente construida con **React
 
 ### 📌 Características Principales
 
-  * **Sistema de Evaluación de Córdoba:** La lógica de calificación (aprobación con 7, uso de AI/AJ) se basa en la normativa provincial.
+  * **Sistema de Evaluación de Córdoba:** La lógica de calificación (aprobación con 7) se basa en la normativa provincial.
   * **Sincronización Automática:** Lee datos de Google Sheets en tiempo real (con un *delay* de caché de Google, generalmente de 1-5 minutos).
   * **Organización Flexible:** Soporta múltiples cursos/materias con estructuras de temas diferentes, gestionados mediante pestañas individuales de Google Sheets.
   * **Resumen Docente:** Muestra un listado de los nombres de los alumnos desaprobados en cada tema para un seguimiento focalizado.
@@ -32,7 +32,7 @@ Debe tener un solo archivo de Google Sheets, pero **cada curso debe estar en una
 
   * **Aprobación:** $\ge 7$ (Siete).
   * **Notas:** Números del 1 al 10.
-  * **Ausentes:** `AI` (Ausente Insuficiente) o `AJ` (Ausente Justificado).
+  * **Ausentes:** `AI` (Ausente Injustificado) o `AJ` (Ausente Justificado).
   * **Sin Dato:** `-` (Guion, no deje la celda en blanco).
 
 #### 2\. Publicación de los Enlaces CSV
