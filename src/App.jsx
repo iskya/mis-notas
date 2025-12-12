@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Users, Eye, ChevronLeft, Download, Search, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { BookOpen, Users, Eye, ChevronLeft, Download, Search, AlertCircle, Loader2, BarChart2 } from 'lucide-react';
+
+// Cargar la librería jsPDF globalmente si se usa la opción de CDN en index.html
+// const { jsPDF } = window.jspdf; // Esta línea se usa DENTRO de downloadPDF
 
 const GradesDashboard = () => {
   // --- 1. CONFIGURACIÓN DE TUS LINKS ---
   // Reemplaza cada "LINK_CSV_..." por el enlace que te da Google Sheets al publicar cada PESTAÑA como CSV.
   const CURSOS_CONFIG = {
-    "4to Año A": "https://docs.google.com/spreadsheetshttps://docs.google.com/spreadsheets/d/e/2PACX-1vT1GKSL-lyXI45UanB4aunjI4Q4IXPDcrZdUoShk6DFWA89E7tWlNTHsAOaqfTilE3d_R6mHJ5Q2mC1/pub?gid=269490703&single=true&output=csv/d/e/2PACX-1vT1GKSL-lyXI45UanB4aunjI4Q4IXPDcrZdUoShk6DFWA89E7tWlNTHsAOaqfTilE3d_R6mHJ5Q2mC1/pub?gid=269490703&single=true&output=csv",
-    "5to Año B": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1GKSL-lyXI45UanB4aunjI4Q4IXPDcrZdUoShk6DFWA89E7tWlNTHsAOaqfTilE3d_R6mHJ5Q2mC1/pub?gid=1950775004&single=true&output=csv",
-    "6to Año C": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1GKSL-lyXI45UanB4aunjI4Q4IXPDcrZdUoShk6DFWA89E7tWlNTHsAOaqfTilE3d_R6mHJ5Q2mC1/pub?gid=1071694189&single=true&output=csv"
+    "4to Año D Física": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1GKSL-lyXI45UanB4aunjI4Q4IXPDcrZdUoShk6DFWA89E7tWlNTHsAOaqfTilE3d_R6mHJ5Q2mC1/pub?gid=269490703&single=true&output=csv",
+    "4to Año D Electrotecnia": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1GKSL-lyXI45UanB4aunjI4Q4IXPDcrZdUoShk6DFWA89E7tWlNTHsAOaqfTilE3d_R6mHJ5Q2mC1/pub?gid=1423441074&single=true&output=csv",
+    "5to Año D Física": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1GKSL-lyXI45UanB4aunjI4Q4IXPDcrZdUoShk6DFWA89E7tWlNTHsAOaqfTilE3d_R6mHJ5Q2mC1/pub?gid=1950775004&single=true&output=csv",
+    "5to Año E Física": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1GKSL-lyXI45UanB4aunjI4Q4IXPDcrZdUoShk6DFWA89E7tWlNTHsAOaqfTilE3d_R6mHJ5Q2mC1/pub?gid=1071694189&single=true&output=csv"
   };
 
   // --- ESTADOS ---
@@ -16,6 +20,50 @@ const GradesDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // --- LÓGICA DE CALCIFICACIÓN ---
+  const calculateStatus = (t) => {
+    // Prioridad: Coloquio > R2 > R1 > 1ra
+    const last = t.coloquio !== '-' ? t.coloquio : 
+                 t.recuperatorio2 !== '-' ? t.recuperatorio2 : 
+                 t.recuperatorio1 !== '-' ? t.recuperatorio1 : t.primera;
+
+    if (last === '-' || last === '') return { label: 'S/D', color: 'bg-slate-100 text-slate-400', long: 'Sin Datos', isFailed: false };
+    if (last === 'AJ') return { label: 'AJ', color: 'bg-amber-100 text-amber-700', long: 'Ausente Justificado', isFailed: false };
+    
+    const num = parseFloat(last);
+    
+    // AI o cualquier nota < 7 se considera desaprobada
+    if (last === 'AI' || num < 7) return { label: last, color: 'bg-red-100 text-red-700', long: 'Desaprobado', isFailed: true };
+    
+    return { label: num, color: 'bg-emerald-100 text-emerald-700', long: 'Aprobado', isFailed: false };
+  };
+  
+  // --- ESTADÍSTICAS POR TEMA (Calculado al cargar un curso) ---
+  const statsByTopic = useMemo(() => {
+    if (!data.length) return [];
+    
+    const topicCount = data[0].topics.length;
+    
+    // Inicializar el array de estadísticas
+    const stats = Array(topicCount).fill(0).map((_, i) => ({
+      name: data[0].topics[i].name,
+      failedCount: 0,
+    }));
+
+    // Iterar sobre todos los alumnos para contar los desaprobados
+    data.forEach(student => {
+      student.topics.forEach((topic, topicIndex) => {
+        const status = calculateStatus(topic);
+        if (status.isFailed) {
+          stats[topicIndex].failedCount++;
+        }
+      });
+    });
+
+    return stats;
+  }, [data]);
+
 
   // --- CARGA DE DATOS DESDE SHEETS ---
   const loadCourseData = async (courseName) => {
@@ -57,22 +105,6 @@ const GradesDashboard = () => {
     }
   };
 
-  // --- LÓGICA DE CALCIFICACIÓN ---
-  const calculateStatus = (t) => {
-    // Prioridad: Coloquio > R2 > R1 > 1ra
-    const last = t.coloquio !== '-' ? t.coloquio : 
-                 t.recuperatorio2 !== '-' ? t.recuperatorio2 : 
-                 t.recuperatorio1 !== '-' ? t.recuperatorio1 : t.primera;
-
-    if (last === '-' || last === '') return { label: 'S/D', color: 'bg-slate-100 text-slate-400', long: 'Sin Datos' };
-    if (last === 'AJ') return { label: 'AJ', color: 'bg-amber-100 text-amber-700', long: 'Ausente Justificado' };
-    if (last === 'AI' || last === '1') return { label: 'Insuf.', color: 'bg-red-100 text-red-700', long: 'Insuficiente' };
-    
-    const num = parseFloat(last);
-    if (num >= 7) return { label: num, color: 'bg-emerald-100 text-emerald-700', long: 'Aprobado' };
-    return { label: num, color: 'bg-red-100 text-red-700', long: 'Desaprobado' };
-  };
-
   // --- GENERACIÓN DE PDF (Vía CDN) ---
   const downloadPDF = (student) => {
     try {
@@ -81,7 +113,7 @@ const GradesDashboard = () => {
       
       doc.setFont("helvetica", "bold");
       doc.setFontSize(20);
-      doc.setTextColor(67, 56, 202); // Indigo 700
+      doc.setTextColor(67, 56, 202); 
       doc.text("REPORTE DE NOTAS", 20, 20);
       
       doc.setFontSize(12);
@@ -105,7 +137,7 @@ const GradesDashboard = () => {
 
       doc.save(`Notas_${student.name.replace(/\s/g, '_')}.pdf`);
     } catch (error) {
-      alert("Error al generar el PDF. Asegúrate de tener conexión a internet.");
+      alert("Error al generar el PDF. Asegúrate de tener las librerías CDN en index.html.");
     }
   };
 
@@ -166,12 +198,32 @@ const GradesDashboard = () => {
           </div>
         )}
 
+        {/* --- RESUMEN DE DESEMPEÑO (NUEVA SECCIÓN) --- */}
+        {activeCourse && !selectedStudent && data.length > 0 && (
+          <div className="mb-8 animate-in fade-in duration-500">
+            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <BarChart2 size={16}/> Resumen de Desempeño del Curso
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {statsByTopic.map((stat, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-center">
+                  <span className="text-[10px] font-black text-slate-500 uppercase block truncate mb-2">{stat.name}</span>
+                  <div className={`text-2xl font-black ${stat.failedCount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    {stat.failedCount}
+                  </div>
+                  <p className="text-xs text-slate-400">Desaprobados</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* LISTADO DE ALUMNOS DEL CURSO */}
         {activeCourse && !selectedStudent && (
           <div className="animate-in slide-in-from-bottom-4 duration-500">
             <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
               <div className="p-6 bg-indigo-900 text-white">
-                <h2 className="text-2xl font-bold mb-4">{activeCourse}</h2>
+                <h2 className="text-xl font-bold mb-4">{activeCourse}</h2>
                 <div className="relative">
                   <Search className="absolute left-4 top-3.5 text-white/40" size={20}/>
                   <input 
