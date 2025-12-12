@@ -3,8 +3,6 @@ import {
   Users, BookOpen, XCircle, Lock, LogOut, Eye, ChevronLeft, 
   BarChart2, FolderOpen, Plus, Trash2, Download, ClipboardCheck
 } from 'lucide-react';
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
 
 // --- COMPONENTE LOGIN ---
 const LoginModal = ({ password, setPassword, handleLogin, setShowLogin, loginError }) => (
@@ -70,50 +68,40 @@ const GradesDashboard = () => {
   // --- GENERACIÓN DE PDF ---
 const downloadPDF = (student) => {
   try {
+    // Esto obtiene la librería desde el objeto window (el navegador)
+    const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
-    // Configuración estética del PDF
+
+    // Título y datos
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor(79, 70, 229); // Color Indigo
+    doc.setFontSize(18);
     doc.text("REPORTE DE CALIFICACIONES", 20, 20);
     
     doc.setFontSize(12);
-    doc.setTextColor(100);
     doc.setFont("helvetica", "normal");
-    doc.text(`Curso: ${courses[activeCourse].name}`, 20, 30);
-    doc.text(`Estudiante: ${student.name}`, 20, 37);
-    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()}`, 20, 44);
+    doc.text(`Estudiante: ${student.name}`, 20, 30);
+    doc.text(`Curso: ${courses[activeCourse].name}`, 20, 37);
 
-    // Definir las filas de la tabla
-    const tableRows = student.topics.map(t => {
+    // Mapeo de datos para la tabla
+    const rows = student.topics.map(t => {
       const res = calculateTopicStatus(t);
-      return [
-        t.name, 
-        t.primera, 
-        t.recuperatorio1, 
-        t.recuperatorio2, 
-        t.coloquio, 
-        res.longLabel
-      ];
+      return [t.name, t.primera, t.recuperatorio1, t.recuperatorio2, t.coloquio, res.longLabel];
     });
 
-    // Generar la tabla usando el plugin autotable
+    // Crear la tabla
     doc.autoTable({
-      startY: 50,
-      head: [['Tema', '1ra Nota', 'Recup. 1', 'Recup. 2', 'Coloquio', 'Estado Final']],
-      body: tableRows,
-      styles: { fontSize: 10, cellPadding: 4 },
-      headStyles: { fillStyle: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
-      alternateRowStyles: { fillStyle: [245, 247, 250] },
+      startY: 45,
+      head: [['Tema', '1ra', 'R1', 'R2', 'Coloq.', 'Estado']],
+      body: rows,
+      theme: 'grid',
+      headStyles: { fillStyle: [79, 70, 229] }
     });
 
-    // Descargar el archivo
+    // Guardar
     doc.save(`Notas_${student.name.replace(/\s/g, '_')}.pdf`);
-    
-  } catch (error) {
-    console.error("Error generando el PDF:", error);
-    alert("No se pudo generar el PDF. Asegúrate de haber instalado jspdf (npm install jspdf jspdf-autotable)");
+  } catch (err) {
+    console.error("Error al generar PDF:", err);
+    alert("Error crítico: No se pudo generar el archivo. Revisa la consola (F12).");
   }
 };
 
