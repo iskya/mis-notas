@@ -86,7 +86,7 @@ const GradesDashboard = () => {
         // Estructura: Alumno (0), P(1), R1(2), R2(3), Col(4)...
         for (let i = 1; i < v.length; i += 4) {
           student.topics.push({
-            name: headers[i]?.trim() || `Tema ${(i+3)/4}`,
+            name: headers[i]?.replace(/1ra|P/i, '').trim() || `Tema ${(i+3)/4}`,
             primera: v[i] || '-',
             recuperatorio1: v[i+1] || '-',
             recuperatorio2: v[i+2] || '-',
